@@ -1,0 +1,56 @@
+import tkinter as tk
+from tkinter import messagebox
+import requests
+from bs4 import BeautifulSoup
+from openpyxl import Workbook, load_workbook
+import os
+from datetime import datetime
+
+# Caminho do arquivo Excel (altere se quiser gravar em outro local)
+CAMINHO_PLANILHA = "previsao_tempo.xlsx"
+
+# Função para buscar dados do tempo
+def buscar_previsao():
+    try:
+        # Você pode substituir a URL abaixo por outra confiável
+        url = "https://www.climatempo.com.br/previsao-do-tempo/cidade/558/saopaulo-sp"
+        response = requests.get(url)
+        soup = BeautifulSoup(response.text, "html.parser")
+
+        # Extraindo temperatura e umidade
+        temperatura = soup.find("span", class_="-bold -gray-dark-2 -font-55 _margin-l-20").text.strip()
+        umidade = soup.find("li", text=lambda t: t and "umidade" in t.lower())
+        umidade_valor = umidade.text.split(":")[1].strip() if umidade else "N/A"
+
+        data_hora = datetime.now().strftime("%d/%m/%Y %H:%M")
+
+        # Verificando se a planilha existe
+        if os.path.exists(CAMINHO_PLANILHA):
+            wb = load_workbook(CAMINHO_PLANILHA)
+            ws = wb.active
+        else:
+            wb = Workbook()
+            ws = wb.active
+            ws.append(["Data e Hora", "Temperatura", "Umidade"])
+
+        # Adicionando os dados
+        ws.append([data_hora, temperatura, umidade_valor])
+        wb.save(CAMINHO_PLANILHA)
+
+        messagebox.showinfo("Sucesso", f"Previsão salva com sucesso:\nTemperatura: {temperatura}\nUmidade: {umidade_valor}")
+
+    except Exception as e:
+        messagebox.showerror("Erro", f"Erro ao buscar previsão: {str(e)}")
+
+# Interface Tkinter
+janela = tk.Tk()
+janela.title("Previsão do Tempo")
+janela.geometry("300x200")
+
+label = tk.Label(janela, text="Clique para buscar previsão do tempo:")
+label.pack(pady=20)
+
+botao = tk.Button(janela, text="Buscar previsão", command=buscar_previsao)
+botao.pack(pady=10)
+
+janela.mainloop()
